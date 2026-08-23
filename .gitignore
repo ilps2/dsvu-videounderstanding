@@ -17,3 +17,4 @@ output/
 # 本地模型缓存（doctor 可自动下载）
 .hf_cache/
 models_cache/
+.github/workflows/
