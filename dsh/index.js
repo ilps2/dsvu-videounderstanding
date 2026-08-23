@@ -64,7 +64,7 @@ const OUTPUT_SCHEMA = {
         required_capability: { type: 'string' },
         initial_layer: { type: 'string' },
         effective_layer: { type: 'string' },
-        upgrade_layer: { type: ['string', 'null'] },
+        upgrade_layer: { oneOf: [{ type: 'string' }, { type: 'null' }] },
         escalation_reason: { type: 'array', items: { type: 'string' } },
         evidence_score: { type: 'number' },
         evidence_sources: { type: 'array', items: { type: 'string' } },

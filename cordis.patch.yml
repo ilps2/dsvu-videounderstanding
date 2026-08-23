@@ -3,4 +3,4 @@
 # live-clip understand_video.py pipeline (download → AVIS info layer → LLM).
 - insert:
     - id: video-understand
-      name: 'dsh-video-understand'
+      name: '@svenyu/dsvu'
