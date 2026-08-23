@@ -1,7 +1,9 @@
 # dsvu
 
-[![npm version](https://img.shields.io/npm/v/dsvu)](https://www.npmjs.com/package/@svenyu/dsvu)
+[![npm version](https://img.shields.io/npm/v/@svenyu%2Fdsvu)](https://www.npmjs.com/package/@svenyu/dsvu)
 [![GitHub stars](https://img.shields.io/github/stars/ilps2/dsvu-videounderstanding)](https://github.com/ilps2/dsvu-videounderstanding)
+[![license](https://img.shields.io/github/license/ilps2/dsvu-videounderstanding)](https://github.com/ilps2/dsvu-videounderstanding/blob/main/LICENSE)
+[![language](https://img.shields.io/github/languages/top/ilps2/dsvu-videounderstanding)](https://github.com/ilps2/dsvu-videounderstanding)
 
 低成本视频理解插件：给 dsh agent 注册 `video_understand` 工具——B站链接 / BV 号 / 本地视频 → AVIS 信息层（ASR 转写 + 场景结构 + 运动对象轨迹 + YOLO 语义）→ 摘要+问答。引擎自包含，无需外部依赖。
 
