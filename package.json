@@ -1,6 +1,6 @@
 {
   "name": "@svenyu/dsvu",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "dsvu（DeepSeek-Powered Video Understanding）低成本视频理解工具：B站链接/BV/本地视频 → 信息层（ASR+场景+对象轨迹+YOLO）→ 摘要+问答。基于 deepseek-v4-flash-vision-exp 同源即看即答 + grid 密集抽帧。问题驱动动态路由分层（L0/L1/L2）、语义层复用、预算上限。引擎自包含，无需外部依赖。",
   "publishConfig": {
     "access": "public"

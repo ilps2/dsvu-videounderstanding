@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.6 (2026-08-23)
+- fix(dsh bundle): **插件树加载失败修复**——`cordis.patch.yml` 的 loader entry `name` 由不存在的旧包名 `dsh-video-understand` 改为 `@svenyu/dsvu`（root export 即插件本体），解决 `dsh --profile web` 启动报 `Cannot find package 'dsh-video-understand'`（dsh 0.1.1-rc.2 下实测）
+- fix(schema): **输出 JSON schema 兼容 dsh 校验器**——`routing.upgrade_layer` 由 `type: ['string', 'null']`（type 数组，dsh 校验器不支持）改为 `oneOf: [{ type: 'string' }, { type: 'null' }]`，解决 `video-understand` 工具注册被跳过（JsonSchemaError）
+
 ## 0.6.5 (2026-08-23)
 - fix(deps): **一次安装依赖补齐**——`requirements.txt` 补 `pandas>=2.0`（avis encode 场景/时间线 CSV 硬依赖，此前缺失会导致"装完首次运行即崩"）；`CORE_MODS` 检测列表从 3 项扩到 6 项（faster_whisper/cv2/yt_dlp/**pandas/xxhash/PIL**），避免误判"依赖齐全"
 - 现在 `npm install @svenyu/dsvu` → 首次调用自动懒安装全部核心依赖（含 pandas），无额外手动步骤
