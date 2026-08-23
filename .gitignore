@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node
+node_modules/
+
+# macOS
+.DS_Store
+
+# 内容产物（视频/HTML 渲染产物，可复现，不进代码库）
+output/
+*.mp4
+*.zip
+
+# 本地模型缓存（doctor 可自动下载）
+.hf_cache/
+models_cache/

@@ -1,0 +1,8 @@
+# npm 发布排除（files 白名单之外的补充黑名单）
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+.git/
+.DS_Store
+experiments/results/

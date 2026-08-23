@@ -1,0 +1,59 @@
+{
+  "name": "@svenyu/dsvu",
+  "version": "0.6.5",
+  "description": "dsvu（DeepSeek-Powered Video Understanding）低成本视频理解工具：B站链接/BV/本地视频 → 信息层（ASR+场景+对象轨迹+YOLO）→ 摘要+问答。基于 deepseek-v4-flash-vision-exp 同源即看即答 + grid 密集抽帧。问题驱动动态路由分层（L0/L1/L2）、语义层复用、预算上限。引擎自包含，无需外部依赖。",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./dsh/index.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "bin": {
+    "dsvu": "./bin/doctor.mjs"
+  },
+  "scripts": {
+    "test:tools": "node dsh/index.js --self-test",
+    "doctor": "node bin/doctor.mjs",
+    "install-engine": "python3 -m pip install -r engine/requirements.txt",
+    "install-engine-layer": "python3 -m pip install -r engine/requirements-layer.txt"
+  },
+  "license": "MIT",
+  "files": [
+    "bin/",
+    "dsh/",
+    "engine/",
+    "skills/",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "plugin",
+    "video-understand",
+    "avis",
+    "video-understanding",
+    "low-cost",
+    "bilibili",
+    "dsvu",
+    "deepseek-vision"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilps2/dsvu-videounderstanding.git"
+  },
+  "homepage": "https://github.com/ilps2/dsvu-videounderstanding",
+  "bugs": {
+    "url": "https://github.com/ilps2/dsvu-videounderstanding/issues"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
