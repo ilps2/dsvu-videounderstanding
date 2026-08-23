@@ -11,6 +11,7 @@
 成本: ~0.01 元/视频（信息层 1k-3k tok vs 原始逐帧 540万-3800万 tok）
 """
 import argparse, base64, glob, json, os, re, subprocess, sys, time, urllib.request
+import hashlib
 import os
 import ssl
 # 系统代理(Clash MITM)用自签名证书 → 指向 macOS 系统证书链（双保险）
@@ -412,6 +413,30 @@ def run_visual(level, video, avis_dir, window=None, grid=""):
         print(f"  ⚠️ 视觉级失败: {e}")
         return "", 0.0, [], "", 0, 0
 
+# ── 视觉证据缓存：同一视频同一窗口的 L2 扫描结果跨进程复用 ──
+#    同一视频连续提问时，第二次起直接复用已扫描的视觉描述/帧图，视觉成本 0。
+def _visual_evidence_path(avis_dir, window):
+    h = hashlib.md5(os.path.abspath(avis_dir).encode()).hexdigest()[:10]
+    d = os.path.join(os.path.expanduser("~"), ".cache", "dsvu", "visual_evidence")
+    return os.path.join(d, f"{h}_{str(window).replace('-', '_').replace(',', '_')}.json")
+
+def _load_visual_evidence(avis_dir, window):
+    try:
+        p = _visual_evidence_path(avis_dir, window)
+        if os.path.exists(p):
+            return json.load(open(p, encoding="utf-8"))
+    except Exception:
+        pass
+    return None
+
+def _save_visual_evidence(avis_dir, window, ev):
+    try:
+        p = _visual_evidence_path(avis_dir, window)
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        json.dump(ev, open(p, "w", encoding="utf-8"), ensure_ascii=False)
+    except Exception:
+        pass
+
 def quality_check(question, answer):
     body = {"model": MODEL,
             "messages": [{"role": "system",
@@ -624,10 +649,25 @@ def main():
                 if n:
                     upgrades.append(f"base@{w}")
             else:
-                note, vc, fps, gpath, pin, pout = run_visual("l2", video_path, avis_dir, w,
-                                                              grid=("auto" if grid_mode else ""))
-                visual_note += note; visual_cost += vc
-                visual_tokens["in"] += pin; visual_tokens["out"] += pout
+                # 视觉证据复用：同视频同窗口已扫描 → 直接复用（视觉成本 0）
+                ev = _load_visual_evidence(avis_dir, w)
+                vc = 0.0; pin = pout = 0
+                if ev is not None:
+                    note = ev.get("note", "")
+                    fps = [f for f in ev.get("frames", []) if os.path.exists(f)]
+                    gpath = ev.get("grid", "") if os.path.exists(ev.get("grid", "")) else ""
+                    if note:
+                        print(f"  ♻️ 复用视觉证据（窗口 {w} 已扫描，视觉成本 0）", flush=True)
+                else:
+                    note, vc, fps, gpath, pin, pout = run_visual("l2", video_path, avis_dir, w,
+                                                                  grid=("auto" if grid_mode else ""))
+                    if note:
+                        _save_visual_evidence(avis_dir, w, {"note": note, "frames": fps, "grid": gpath})
+                if note:
+                    visual_note += note
+                    visual_cost += vc                # 命中缓存 vc=0，不重复计成本
+                    if ev is None:                   # 未命中缓存才累计 VLM token
+                        visual_tokens["in"] += pin; visual_tokens["out"] += pout
                 # grid 模式：累积拼好的大图（≤3 张）；非 grid：独立帧限 12 张
                 if grid_mode and gpath:
                     visual_grids.append(gpath)

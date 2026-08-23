@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.7 (2026-08-23)
+- feat: **视觉证据缓存**——同一视频同一窗口的 L2 扫描结果跨进程复用（`~/.cache/dsvu/visual_evidence/`），第二次起视觉成本 0、不再重复抽帧调 VLM。实测：牛来.mp4 第二问 29s→3s，两问合计 0.032→0.011 元
+
 ## 0.6.6 (2026-08-23)
 - fix(dsh bundle): **插件树加载失败修复**——`cordis.patch.yml` 的 loader entry `name` 由不存在的旧包名 `dsh-video-understand` 改为 `@svenyu/dsvu`（root export 即插件本体），解决 `dsh --profile web` 启动报 `Cannot find package 'dsh-video-understand'`（dsh 0.1.1-rc.2 下实测）
 - fix(schema): **输出 JSON schema 兼容 dsh 校验器**——`routing.upgrade_layer` 由 `type: ['string', 'null']`（type 数组，dsh 校验器不支持）改为 `oneOf: [{ type: 'string' }, { type: 'null' }]`，解决 `video-understand` 工具注册被跳过（JsonSchemaError）
