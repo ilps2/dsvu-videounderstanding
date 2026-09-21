@@ -13,6 +13,18 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
+    },
+    "compatibility": {
+      "dsh": ">=0.1.0-rc.8 <0.2.0",
+      "dshReleases": {
+        "0.1.5-rc.1": "compatible"
+      }
+    },
+    "permissions": {
+      "files": "读写本地视频文件、插件本地 .venv 与 ~/.cache/dsvu 缓存；不触碰 Profile 配置外的其他用户目录",
+      "commands": "安装后按需 spawn 子进程：python3（引擎）、ffmpeg（抽帧/转码）、yt-dlp（B站下载）、pip/uv（建 venv 装依赖）",
+      "credentials": "从环境变量读取 DEEPSEEK_API_KEY（及 DSVU_* 可选项）；仅在进程内使用，不落盘、不上传到 DeepSeek API 以外的端点",
+      "nativeOrExecutableArtifacts": "内含 Python 引擎源码（engine/）；首次调用时创建插件本地 Python venv 并安装 faster-whisper/opencv/yt-dlp（核心层约 200-300MB，可选语义层另约 2GB）；无预编译二进制"
     }
   },
   "bin": {

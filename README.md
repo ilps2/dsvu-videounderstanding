@@ -68,6 +68,23 @@ npx dsvu doctor --fix  # 一键自动修复（建环境 + 装依赖）
 > \* 未设置显式 key 时自动读 `~/.dsh/.credentials.yaml`，**DeepSeek 优先**（主模型=视觉模型，同源）。一个 key 搞定。
 > **仅 DeepSeek 不可用时**才走备选：`export LLM_API_KEY=<小米key>` → 全程 mimo-v2.5（成本相近但质量低 ~0.9 分，见"模型方案对比"）。
 
+## DSH 兼容性与权限
+
+**宿主兼容性**：声明支持 `dsh >= 0.1.0-rc.8 <0.2.0`（见 package.json `dsh.compatibility`）。已在 **dsh 0.1.5-rc.1** 完成一次性 Profile（E3 隔离环境）安装 / 启动 / 卸载验收，证据见 [docs/dsh-compat-evidence.md](docs/dsh-compat-evidence.md)。未列出的版本不代表不可用，仅表示未测。
+
+**权限披露**（对应 DSH STORE 权限信号，均为诚实声明）：
+
+| 信号 | 实际行为 |
+|---|---|
+| files | 读写目标视频文件、插件本地 `.venv` 与 `~/.cache/dsvu` 缓存；不触碰 Profile 配置外的其他用户目录 |
+| commands | 按需 spawn 子进程：`python3`（引擎）、`ffmpeg`（抽帧/转码）、`yt-dlp`（B站下载）、`pip`/`uv`（建 venv 装依赖） |
+| credentials | 只读环境变量 `DEEPSEEK_API_KEY`（及 `DSVU_*` 可选项）与 `~/.dsh/.credentials.yaml`；仅在进程内使用，不落盘、不上传到 DeepSeek API 以外的端点 |
+| nativeOrExecutableArtifacts | 内含 Python 引擎源码（`engine/`）；首次调用创建插件本地 venv 并安装 faster-whisper/opencv/yt-dlp；无预编译二进制 |
+
+**外部服务**：DeepSeek API（L1/L2 视觉与问答，`api.deepseek.com`）；B站视频下载（yt-dlp，公网）；pip 镜像（仅首次建 venv）。L0（默认）完全本地。
+
+**失败边界**：卸载即完整回滚——cordis patch 只插入 `video-understand` 一行，`dsh plugin remove` 后 dump-config 无残留条目（已验证）。引擎依赖缺失时工具报错并提示 `dsvu doctor --fix`，不影响宿主其他插件；API key 缺失时 L1/L2 自动降级 L0 或显式报错。
+
 ## 工具
 
 `video_understand(target, questions?, noDownload?, level?, window?)`
