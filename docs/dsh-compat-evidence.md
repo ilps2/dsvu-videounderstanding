@@ -31,7 +31,7 @@ dsh --profile e3-dsvu --dump-config | grep -c 'video-understand'    # → 0
 
 ## A. dsh 0.2.0-rc.2（2026-09-30）
 
-- 插件：`@svenyu/dsvu` 0.6.8（本地源码 checkout）
+- 插件：`@svenyu/dsvu` 0.6.9（本地源码 checkout；同轮验收也覆盖过 0.6.8，两者差异仅在 `engine/` 侧文件与描述文字，bundle 契约未变）
 - DSH：`0.2.0-rc.2`（`@deepseek-ai/dsh`，独立安装于隔离工作区，未改动全局 0.1.5-rc.1）
 - Node.js：v22.22.2；pnpm：11.8.0
 
@@ -155,8 +155,11 @@ package.json `dsh.compatibility`：
   `git ls-files -s | awk '$1=="100755"'`（应为空；必要时 `chmod 644 bin/doctor.mjs`）
 - 历史实验脚本 `experiments/` 移入 `docs/experiments/`：非运行时源码，也从未进入
   npm 包（`package.json.files` 不含该目录）
-- 收敛后有界运行时源码：**29 文件 / 386877 字节**（上游上限 240 文件、单文件 256 KiB、
-  合计 2 MiB），此前为 37 文件 / 423420 字节
+- 收敛后有界运行时源码：**29 文件 / 389304 字节**（上游上限 240 文件、单文件 256 KiB、
+  合计 2 MiB），修复前为 37 文件 / 423420 字节
+- 0.6.9 起仓库与 npm 包**不含任何模型权重**：`yolov8n.pt`（6.2 MiB）从 git 移除，改为
+  首次需要时下载到 `~/.cache/dsvu/models/` 并做 sha256 校验（`engine/model_cache.py`，
+  每个源独立固定 size+hash）。npm tarball 由 6.1 MiB 降至约 188 KiB
 - 仍存在的信号：`files` / `commands` / `credentials` —— 读 API key（`credentials`）与
   spawn Python 引擎（`commands`）是本插件的功能本身，无法在不移除功能的前提下消除；
   上游自动通道要求六个信号全为 false，故本插件按定位应走守卫生效的 `user-reviewed`
@@ -167,7 +170,11 @@ package.json `dsh.compatibility`：
 - 引擎为 Python 源码（`engine/`），首次调用 `video_understand` 时创建插件本地 venv
   并安装核心依赖（faster-whisper / opencv / yt-dlp / pandas，约 200-300MB）；
   可选语义层（torch / ultralytics，约 2GB）需显式 `dsvu doctor --fix --layer`。
-  仓库内无预编译二进制。
+  仓库内无预编译二进制、无可执行位文件，**不含模型权重**。
+- 模型：`yolov8n.pt` 首次需要 YOLO 语义标签时按需下载（约 6 MiB）到
+  `~/.cache/dsvu/models/`，逐源 sha256 校验，先写 `.part` 再原子替换；缓存文件被篡改
+  会被识别并改名为 `.bad` 后重下。离线可用 `DSVU_YOLO_MODEL=<路径>` 指定本地副本，
+  或 `DSVU_NO_DOWNLOAD=1` 静默降级（只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹）。
 - 凭据：只读 `DEEPSEEK_API_KEY`（及 `DSVU_*` 可选项）与 `~/.dsh/.credentials.yaml`，
   进程内使用，不落盘、不上传至 DeepSeek API 以外的端点。
 - 网络：B站视频下载（yt-dlp）与 DeepSeek API；L0 层级完全本地。

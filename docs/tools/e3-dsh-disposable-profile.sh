@@ -24,9 +24,12 @@ PLUGIN_DIR="${1:?usage: e3-dsh-disposable-profile.sh <plugin-dir> [profile]}"
 PROFILE="${2:-e3-dsvu}"
 DSH="${DSH_BIN:-dsh}"
 NODE="${NODE_BIN:-node}"
-PACKAGE_NAME="$(node -p "require('$PLUGIN_DIR/package.json').name")"
-ENTRY_ID="$(node -p "require('$PLUGIN_DIR/package.json').dsh.bundle.patch" >/dev/null 2>&1; \
-  grep -m1 'id:' "$PLUGIN_DIR/cordis.patch.yml" | awk '{print $2}')"
+PACKAGE_NAME="$("$NODE" -p "require('$PLUGIN_DIR/package.json').name")"
+ENTRY_ID="$(awk '/^[[:space:]]*-[[:space:]]*id:/{print $3; exit}' "$PLUGIN_DIR/cordis.patch.yml")"
+if [ -z "$ENTRY_ID" ]; then
+  echo "无法从 cordis.patch.yml 解析 bundle 入口 id" >&2
+  exit 2
+fi
 
 DSH_HOME="$(mktemp -d)"
 export DSH_HOME
@@ -45,7 +48,7 @@ echo
 
 echo "### 2. 配置合成"
 $DSH --profile "$PROFILE" --dump-config 2>&1 | grep -B1 -A2 "$ENTRY_ID\|$PACKAGE_NAME" | head -20
-echo "--- entry 计数（应各为 1）---"
+echo "--- entry 计数（入口 id 应为 1；包名出现 2 次属正常 = 注释行 + 条目行）---"
 echo "$ENTRY_ID  : $($DSH --profile "$PROFILE" --dump-config 2>&1 | grep -c "$ENTRY_ID")"
 echo "$PACKAGE_NAME : $($DSH --profile "$PROFILE" --dump-config 2>&1 | grep -c "$PACKAGE_NAME")"
 echo

@@ -638,11 +638,23 @@ def extract_obj_tracks(video_path: Path, avis_dir: Path, fps_target: int = 5,
             _yolo = False
             try:
                 from ultralytics import YOLO
-                for cand in (BASE / "models" / "yolov8n.pt",
-                             Path("/tmp/yolov8n.pt"), Path.home() / ".cache" / "yolov8n.pt"):
-                    if cand.exists():
-                        _yolo = YOLO(str(cand), verbose=False)
-                        break
+                # 0.6.9 起 yolov8n.pt 不再随仓库/包分发，改为首次需要时按需下载
+                # 到 ~/.cache/dsvu/models/（多源 + sha256 校验，见 model_cache.py）。
+                # 拿不到模型只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹主流程。
+                cand = None
+                try:
+                    if str(BASE) not in sys.path:
+                        sys.path.insert(0, str(BASE))
+                    from model_cache import ensure as _ensure_model
+                    cand = _ensure_model("yolov8n.pt")
+                except Exception as e:
+                    print(f"  ⚠️ model_cache unavailable, fallback to local paths: {e}")
+                    cand = next((p for p in (BASE / "models" / "yolov8n.pt",
+                                             Path("/tmp/yolov8n.pt"),
+                                             Path.home() / ".cache" / "yolov8n.pt")
+                                 if p.exists()), None)
+                if cand:
+                    _yolo = YOLO(str(cand), verbose=False)
             except Exception as e:
                 print(f"  ⚠️ YOLO unavailable: {e}")
         return _yolo or None

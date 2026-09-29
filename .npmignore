@@ -6,3 +6,8 @@ __pycache__/
 .git/
 .DS_Store
 experiments/results/
+
+# 模型权重不进包（0.6.9 起按需下载到 ~/.cache/dsvu/models/）
+# 注意：package.json 的 files 是白名单，对白名单内的路径 .npmignore 不生效，
+# 因此真正的保证是「该文件根本不在工作区」——发布前请跑 npm pack --dry-run 核对。
+engine/models/*.pt

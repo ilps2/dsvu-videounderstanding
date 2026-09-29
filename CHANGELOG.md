@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.9 (2026-09-30)
+- chore: **仓库与 npm 包不再携带任何二进制**——`yolov8n.pt`（6.2 MiB）从 git 移除，改为按需下载
+  - npm tarball 由 6.1 MiB 降至约 1 MiB：此前包里 90% 以上是这一个权重文件
+  - 新增 `engine/model_cache.py`：多源 + 每源独立 sha256 校验的顺序下载，落 `~/.cache/dsvu/models/`，先写 `.part` 再 `os.replace` 原子落地；校验不过自动换源
+  - 两个源返回的是**字节不同**的两份同架构快照，因此各自固定 size+sha256（`github-releases` v8.3.0 = 原先入库的那份；`hf-mirror` = 国内可达的另一份）
+  - 环境变量：`DSVU_YOLO_MODEL`（指定本地副本，离线/内网）、`DSVU_MODEL_DIR`（改缓存目录）、`DSVU_NO_DOWNLOAD=1`（只查本地、绝不联网）
+  - 拿不到模型只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹主流程（沿用原有降级行为）
+- feat(doctor): `dsvu doctor` 新增 `yolo-model` 检查项（就绪 / 未下载 / 校验不通过，各给修复命令）；`--fix` 在已装 ultralytics 时顺带预取模型
+- fix(packaging): `.npmignore` 补模型排除，并注明「`files` 白名单会盖过 ignore 文件，真正的保证是文件不在工作区」——发布前用 `npm pack --dry-run` 核对
+
 ## 0.6.8 (2026-09-30)
 - chore(dsh-store): **对齐 DSH STORE 固定源自动策略**
   - `engine/avis.py` 去掉误设的可执行位（git mode `100755` → `100644`）——该模式会命中上游 `nativeOrExecutableArtifacts` 权限信号，而仓库内并无任何预编译二进制

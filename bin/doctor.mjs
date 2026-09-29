@@ -134,6 +134,29 @@ if (py) {
   report('pip-layer', OPTIONAL, missingLayer.length === 0,
     missingLayer.length === 0 ? '语义层依赖齐全（CLIP / YOLO）' : `语义层依赖未装（可选，建层时才需要）: ${missingLayer.join(', ')}`,
     missingLayer.length ? `${py.python} -m pip install -r ${path.join(PLUGIN_ROOT, 'engine', 'requirements-layer.txt')} ${PIP_MIRROR}` : null)
+
+  // 4.1 YOLO 模型 —— 0.6.9 起不再随仓库/包分发，改为按需下载到本地缓存
+  const modelCache = path.join(PLUGIN_ROOT, 'engine', 'model_cache.py')
+  const hasUltralytics = !missingLayer.includes('ultralytics')
+  const modelFix = `${py.python} ${modelCache} --ensure`
+  if (existsSync(modelCache)) {
+    let info = null
+    const st = run(py.python, [modelCache, '--status', '--json'])
+    try { info = JSON.parse(st.stdout) } catch { info = null }
+    if (!info) {
+      report('yolo-model', OPTIONAL, false, 'YOLO 模型状态未知（model_cache.py 未能返回 JSON）', modelFix)
+    } else if (info.found && info.verified !== false) {
+      report('yolo-model', OPTIONAL, true, 'YOLO 模型已就绪', null, info.path || '')
+    } else if (info.found) {
+      report('yolo-model', OPTIONAL, false, 'YOLO 模型校验不通过（文件不完整或被替换）',
+        `${py.python} ${modelCache} --ensure --force`, info.path || '')
+      if (FIX_MODE && hasUltralytics) run(py.python, [modelCache, '--ensure', '--force'])
+    } else {
+      report('yolo-model', OPTIONAL, false,
+        'YOLO 模型未下载（按需拉取，约 6 MiB；首次用到 YOLO 语义标签时自动下载）', modelFix)
+      if (FIX_MODE && hasUltralytics) run(py.python, [modelCache, '--ensure'])
+    }
+  }
 }
 
 // 5. API key

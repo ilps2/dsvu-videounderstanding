@@ -28,11 +28,13 @@ npm install @svenyu/dsvu
 
 **引擎已内含**，无需额外克隆外部仓库。
 
+**零二进制**：仓库与 npm 包内不含任何模型权重。YOLO 语义标签用的 `yolov8n.pt`（约 6 MiB）在**首次真正需要时**才会下载到 `~/.cache/dsvu/models/`，并做 sha256 校验（两个源各自独立校验，见 `engine/model_cache.py`）。离线环境可用 `DSVU_YOLO_MODEL=<本地路径>` 指定已有副本，或 `DSVU_NO_DOWNLOAD=1` 静默降级（只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹主流程）。
+
 ### 环境自检
 
 ```bash
 npx dsvu doctor        # 逐项检测 + 给出修复命令
-npx dsvu doctor --fix  # 一键自动修复（建环境 + 装依赖）
+npx dsvu doctor --fix  # 一键自动修复（建环境 + 装依赖 + 预取模型）
 ```
 
 前置条件仅两个：`ffmpeg`（macOS `brew install ffmpeg` / Ubuntu `sudo apt install ffmpeg`）和一个 LLM API key（见下表）。语义层依赖（torch/CLIP/YOLO，约 2GB）为可选，仅建完整语义层时再装：`pip install -r engine/requirements-layer.txt`。
