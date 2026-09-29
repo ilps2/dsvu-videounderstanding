@@ -231,13 +231,17 @@ def encode_cached(video_path, workdir, asr_model="tiny", use_clip=False):
     return avis_dir, content_hash
 
 def layer_cache_status(video_path, workdir):
-    """检查视频已有哪些语义层缓存。返回 (has_tiny, has_full)。"""
+    """检查视频已有哪些语义层缓存。返回 (has_tiny, has_full)。
+
+    has_full 兼容两种布局：0.7.0 起的 base 全量转写（avis_cache/{h}/base），
+    以及历史遗留的 base_clip（含 CLIP 索引）。
+    """
     import hashlib
     st = os.stat(video_path)
     h = hashlib.md5(f"{video_path}:{st.st_size}:{int(st.st_mtime)}".encode()).hexdigest()[:10]
     base = os.path.join(workdir, "avis_cache", h)
     has_tiny = os.path.exists(os.path.join(base, "tiny"))
-    has_full = os.path.exists(os.path.join(base, "base_clip"))
+    has_full = os.path.exists(os.path.join(base, "base")) or os.path.exists(os.path.join(base, "base_clip"))
     return has_tiny, has_full
 
 def load_transcript(avis_dir):
@@ -306,14 +310,19 @@ def clip_search(avis_dir, query, top_k=3):
     return []
 
 def locate_visual(question, video_path, avis_dir, workdir, dur, title=""):
-    """纯视觉视频定位：问题 → CLIP 视觉查询词 → 检索帧 → 窗口。返回 (windows, gap, reason)。"""
-    print("  [纯视觉] ASR 覆盖≈0，启用 CLIP 视觉检索定位...", flush=True)
-    # 1. 确保 clip 层存在（没有则构建）
+    """纯视觉视频定位：问题 → CLIP 视觉查询词 → 检索帧 → 窗口。返回 (windows, gap, reason)。
+
+    依赖可选 CLIP（transformers + torch）。0.7.0 起不再随仓库提供安装清单、
+    也不再自动构建 CLIP 层：缺层直接跳过定位并说明原因，
+    避免为一个可选能力拉 ~2GB 依赖。
+    """
+    # 1. CLIP 层必须已存在（不再自动构建）
     clip_path = os.path.join(avis_dir, "clip.npz")
     if not os.path.exists(clip_path):
-        print("  ⚠️ 缺 CLIP 层，构建中（--clip，约 1-3min）...", flush=True)
-        avis_dir2, _ = encode_cached(video_path, workdir, "tiny", use_clip=True)
-        avis_dir = avis_dir2
+        print("  ⚠️ [纯视觉] 未启用 CLIP 语义检索（需自备 transformers + torch），"
+              "跳过视觉定位，仅保留 ASR / 轨迹线索", flush=True)
+        return [], "visual", "CLIP 未启用"
+    print("  [纯视觉] ASR 覆盖≈0，启用 CLIP 视觉检索定位...", flush=True)
     # 2. LLM 提取英文视觉查询词
     body = {"model": MODEL,
             "messages": [{"role": "system", "content": "你是视觉检索词提取器。把用户问题转成 2-3 个英文视觉关键词"
@@ -760,15 +769,16 @@ def main():
                 if args.layer:
                     resp = "y"
                 else:
-                    print("\n💡 建议：提取完整语义层（base 全量转写 + CLIP 视觉索引，约 2-4min）——"
+                    print("\n💡 建议：提取完整语义层（base 全量转写，约 2-4min）——"
                           "之后问这个视频任何问题都秒答、更准。")
                     resp = input("要提取吗？(y/N): ").strip().lower()
                 if resp in ("y", "yes"):
                     t1 = time.time()
-                    base_dir, _ = encode_cached(video_path, args.workdir, "base", use_clip=True)
+                    # 0.7.0 起语义层只建 base 全量转写（不再带 CLIP 视觉索引）
+                    base_dir, _ = encode_cached(video_path, args.workdir, "base", use_clip=False)
                     layer_built = True
                     print(f"✅ 完整语义层已建（{time.time() - t1:.0f}s）→ {os.path.dirname(base_dir)}", flush=True)
-                    upgrades.append("layer:base+clip")
+                    upgrades.append("layer:base")
             # json 模式不阻塞：标记 suggest_layer 由 agent 决定
         elif args.ask_layer:
             print("♻️  完整语义层已在缓存中，直接复用", flush=True)

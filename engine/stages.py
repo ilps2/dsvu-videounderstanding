@@ -1430,8 +1430,9 @@ def assemble_result(ctx: ProcessingContext) -> Dict:
 
 
 def _has_full_layer_cache(ctx: ProcessingContext) -> bool:
-    """检查完整语义层（base 全量 + CLIP）缓存是否已存在。
-    兼容两种缓存布局：本引擎 cache_dir/layers/{hash}_base_clip 与旧路径 workdir/avis_cache/{hash}/base_clip。"""
+    """检查语义层（base 全量转写）缓存是否已存在。
+    兼容两种缓存布局：本引擎 cache_dir/layers/{hash}_base_clip 与旧路径 workdir/avis_cache/{hash}/base_clip。
+    （目录名 `_base_clip` 为 0.6.x 历史命名；0.7.0 起层内不再含 CLIP 索引，但仍沿用该名字以复用已有缓存。）"""
     if not ctx.local_video_path or not os.path.exists(ctx.local_video_path):
         return False
     try:
@@ -1474,10 +1475,14 @@ def _layer_dir(ctx: ProcessingContext):
 
 def build_semantic_layer(ctx: ProcessingContext, force: bool = False) -> Optional[str]:
     """
-    构建完整语义层（中间件）：base 全量转写 + CLIP 视觉索引 + 对象轨迹。
+    构建语义层（中间件）：base 全量转写 + 对象轨迹。
     输出到 cache_dir/layers/{hash}_base_clip/，之后任何问题直接查层回答。
 
-    复用 avis.py 的 encode_video（ASR base + clip + obj_tracks），
+    说明：目录名里的 `_base_clip` 是沿用 0.6.x 的历史命名，0.7.0 起不再包含 CLIP
+    视觉索引（它需要 ~2GB 可选依赖，已不再随仓库提供安装清单或自动构建）。
+    保留旧名字是为了不弄丢已有缓存——若之前建过带 CLIP 的层，仍会被当作完整层复用。
+
+    复用 avis.py 的 encode_video（ASR base + obj_tracks），
     失败不阻断（返回 None 并加 warning）。
 
     Args:
@@ -1506,12 +1511,12 @@ def build_semantic_layer(ctx: ProcessingContext, force: bool = False) -> Optiona
         # encode_video 输出为 {out_root}/{h}_base_clip/{stem}_avis → 把输出直接放到层目录下
         # 但 _has_full_layer_cache 检查 {h}_base_clip 目录本身存在即可
         t0 = time.time()
-        print(f"  ⏳ [语义层] 构建 base 全量转写 + CLIP 索引（约 2-4min）...", flush=True)
+        print(f"  ⏳ [语义层] 构建 base 全量转写 + 对象轨迹（约 2-4min）...", flush=True)
         avis_dir = encode_video(
             Path(ctx.local_video_path),
             output_dir=Path(layer_out),
             asr_model="base",
-            use_clip=True,
+            use_clip=False,
             use_obj_tracks=True,
             device="auto",
         )

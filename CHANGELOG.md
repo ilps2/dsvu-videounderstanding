@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.7.0 (2026-09-30)
+- **BREAKING / 瘦身：移除重型可选语义层（torch / CLIP / YOLO）** —— 安装门槛由 ~2.3GB 降到 ~300MB
+  - 删除 `engine/requirements-layer.txt`：仓库不再提供任何「一键装 2GB」的入口
+  - 删除 `engine/model_cache.py`：不再下载 / 校验 / 分发 `yolov8n.pt`；YOLO 标签改为纯本地路径查找（需自备 ultralytics + 模型文件，拿不到就只丢标签）
+  - 语义层（`--layer` / `suggest_layer` / `build_semantic_layer`）改为**只建 base 全量转写**，不再带 CLIP 视觉索引；目录名沿用历史的 `_base_clip` 以便复用已有缓存
+  - 语义定位（`locate_visual`）**不再自动构建 CLIP 层**：缺层时明确跳过并说明原因，不再为一个可选能力静默拉 2GB 依赖
+  - `doctor` 移除 `pip-layer` 与 `yolo-model` 两个检查项（已无可安装的重型依赖）
+  - 删除 `frame_prep.py` 里已失效的 `dedup_by_clip`（依赖 `open_clip` + `sklearn`，任何 requirements 都未包含，必然 ImportError）与 `--clip-clusters` 参数
+- **不受影响**：ASR / 场景结构 / 运动轨迹 / L0–L2 视觉问答 / 成本核算 / 视觉证据缓存
+- **丢失的能力**：`CLIP 语义检索定位`（找画面）与 `YOLO 对象标签` —— 两者都需自备可选依赖才能恢复；`avis encode --clip` 与 `avis search` 仍在，装上 `transformers + torch` 即可用
+- **回退**：需要回 CLIP/YOLO 时 `git revert` 本提交即可，代码都在 git 历史里
+
 ## 0.6.9 (2026-09-30)
 - chore: **仓库与 npm 包不再携带任何二进制**——`yolov8n.pt`（6.2 MiB）从 git 移除，改为按需下载
   - npm tarball 由 6.1 MiB 降至约 1 MiB：此前包里 90% 以上是这一个权重文件

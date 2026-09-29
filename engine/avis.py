@@ -127,7 +127,8 @@ def extract_clip_embeddings(video_path: Path, avis_dir: Path,
         import torch
         from PIL import Image
     except ImportError:
-        print("  ⚠ CLIP requires: pip install transformers torch pillow")
+        print("  ⚠ CLIP 语义检索需自备可选依赖: pip install transformers torch pillow")
+        print("      （0.7.0 起不再随仓库提供 requirements-layer.txt 或自动安装）")
         return None, None
     
     clip_path = avis_dir / "clip.npz"
@@ -394,7 +395,7 @@ def curate_video(url: str, output_dir: Path = None, asr_model: str = "tiny",
     
     print(f"\n🔧 Encoding to AVIS...")
     result = encode_video(video_path, output_dir=output_dir, asr_model=asr_model,
-                         fps_target="auto", use_clip=True)
+                         fps_target="auto", use_clip=False)
     
     if result is None:
         _shutil.rmtree(dl_dir, ignore_errors=True)
@@ -638,21 +639,14 @@ def extract_obj_tracks(video_path: Path, avis_dir: Path, fps_target: int = 5,
             _yolo = False
             try:
                 from ultralytics import YOLO
-                # 0.6.9 起 yolov8n.pt 不再随仓库/包分发，改为首次需要时按需下载
-                # 到 ~/.cache/dsvu/models/（多源 + sha256 校验，见 model_cache.py）。
-                # 拿不到模型只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹主流程。
-                cand = None
-                try:
-                    if str(BASE) not in sys.path:
-                        sys.path.insert(0, str(BASE))
-                    from model_cache import ensure as _ensure_model
-                    cand = _ensure_model("yolov8n.pt")
-                except Exception as e:
-                    print(f"  ⚠️ model_cache unavailable, fallback to local paths: {e}")
-                    cand = next((p for p in (BASE / "models" / "yolov8n.pt",
-                                             Path("/tmp/yolov8n.pt"),
-                                             Path.home() / ".cache" / "yolov8n.pt")
-                                 if p.exists()), None)
+                # YOLO 标签是可选增强：需自备 ultralytics 与模型文件。
+                # 0.7.0 起不再随仓库分发权重、也不再自动下载（连 model_cache.py 一并删了）。
+                # 拿不到就只丢标签，不影响 ASR / 场景 / 轨迹主流程。
+                cand = next((p for p in (BASE / "models" / "yolov8n.pt",
+                                         Path("/tmp/yolov8n.pt"),
+                                         Path.home() / ".cache" / "yolov8n.pt",
+                                         Path.home() / ".cache" / "dsvu" / "models" / "yolov8n.pt")
+                             if p.exists()), None)
                 if cand:
                     _yolo = YOLO(str(cand), verbose=False)
             except Exception as e:
@@ -1904,7 +1898,7 @@ Examples:
     enc.add_argument("--fps-target", default="auto", help="MV sampling FPS or 'auto'")
     enc.add_argument("--skip-mv", action="store_true", help="Skip MV if already exists")
     enc.add_argument("--skip-asr", action="store_true", help="Skip ASR if already exists")
-    enc.add_argument("--clip", action="store_true", help="Extract CLIP semantic embeddings for visual search")
+    enc.add_argument("--clip", action="store_true", help="提取 CLIP 语义嵌入供视觉检索（需自备 transformers+torch，约 2GB，0.7.0 起不再自动安装）")
     enc.add_argument("--obj-tracks", action="store_true", help="Extract motion-object tracks (MOG2 + IoU) to obj_tracks.jsonl")
 
     # --- batch ---

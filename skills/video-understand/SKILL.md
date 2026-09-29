@@ -5,7 +5,7 @@ description: 低成本视频理解。用户要求理解/总结/分析视频（B�
 
 # Video Understand（低成本视频理解）
 
-用 AVIS 信息层（ASR + 场景结构 + 运动对象轨迹 + YOLO 语义，约 1k token）代替逐帧像素喂 LLM，显著降低单视频 LLM 调用成本（成本取决于所选模型定价，见 `engine/understand_video.py` 价格常量）。
+用 AVIS 信息层（ASR + 场景结构 + 运动对象轨迹，约 1k token）代替逐帧像素喂 LLM，显著降低单视频 LLM 调用成本（成本取决于所选模型定价，见 `engine/understand_video.py` 价格常量）。
 
 ## 触发场景
 
@@ -41,7 +41,7 @@ description: 低成本视频理解。用户要求理解/总结/分析视频（B�
 - `answers[]`：直接呈现给用户
 - `routing`：路由决策可观测——`question_intent`（问题意图）、`initial_layer`/`effective_layer`（初始/实际层级）、`escalation_reason`（升级理由）、`video_profile`（类型/ASR覆盖/轨迹数）、`budget_blocked`（预算拦截）、`frames_sent`（抽帧数）
 - `avis.visual_notes`：VLM 视觉描述（L2 时）
-- `layer_cached`/`suggest_layer`：完整语义层状态
+- `layer_cached`/`suggest_layer`：语义层（base 全量转写）状态
 
 ## 动态路由分层（v0.4）
 
@@ -64,7 +64,7 @@ description: 低成本视频理解。用户要求理解/总结/分析视频（B�
 
 ## 语义层复用（建层一次，追问秒答）
 
-- `--layer`（或 Node 后续支持）：建完整语义层（base 全量转写 + CLIP 视觉索引，约 2-4min）到缓存
+- `--layer`（或 Node 后续支持）：建语义层（base 全量转写，约 2-4min）到缓存
 - 建层后任何问题命中层直接回答（`answered_from_layer=True`），文本问题 0 帧、视觉问题定位窗口抽帧
 - 未建层时 `suggest_layer=True` 提示可建
 
@@ -86,14 +86,14 @@ npx dsvu doctor        # 逐项检测 + 给出修复命令
 
 常见修复：
 
-- Python 依赖缺失：`pip install -r engine/requirements.txt`（语义层另需 `requirements-layer.txt`）
+- Python 依赖缺失：`pip install -r engine/requirements.txt`
 - ffmpeg 缺失：macOS `brew install ffmpeg` / Ubuntu `sudo apt install ffmpeg`
 - API key 缺失：**默认推荐 `export DEEPSEEK_API_KEY=sk-xxxxx`**（全程 deepseek-v4-flash-vision-exp）；或 `~/.dsh/.credentials.yaml` 的 `DEEPSEEK_API_KEY`（自动读）。仅 DeepSeek 不可用时备选 `export LLM_API_KEY=<小米key>`（mimo-v2.5 回退）
-- 自定义 Python：`VIDEO_UNDERSTAND_PYTHON` 环境变量（系统 3.13 含 torch/CLIP 时优先）
+- 自定义 Python：`VIDEO_UNDERSTAND_PYTHON` 环境变量
 
 ## 注意事项
 
-- 处理耗时 2~4 分钟（下载 + ASR + YOLO + LLM），调用后告知用户"正在分析"
-- 纯 BGM 无语音视频：依赖 YOLO 对象标签，描述到"对象+运动"层面
+- 处理耗时 2~4 分钟（下载 + ASR + LLM），调用后告知用户"正在分析"
+- 纯 BGM 无语音视频：不能靠 ASR，靠场景结构 + 运动轨迹描述到"对象+运动"层面（0.7.0 起不再默认带 YOLO 对象标签）
 - 定点问题建议明确写角色名+细节（"XX穿的什么鞋/拿的什么武器"），路由更准
 - 同一视频多次提问命中 ASR 内容哈希缓存，第二次显著更快

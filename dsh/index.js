@@ -6,7 +6,7 @@
 // the agent reliably knows it can ask about a video.
 //
 // Pipeline (spawned; AVIS info layer instead of per-frame sampling):
-//   target(B站URL/BV/本地路径) → 下载 → AVIS 信息层(MV/ASR/场景/YOLO轨迹)
+//   target(B站URL/BV/本地路径) → 下载 → AVIS 信息层(ASR/场景/运动轨迹)
 //   → 融合 prompt → MiMo 摘要+问答 → JSON
 //
 // 数据流：L0 完全本地；L1/L2 使用 MiMo API 进行视觉分析（帧上传至 MiMo 服务器）。
@@ -126,7 +126,7 @@ export function apply(ctx, config = {}) {
   const tool = (toolName) => ({
     name: toolName,
     description:
-      '低成本理解一个视频：输入 B站链接 / BV 号 / 本地视频路径，返回摘要+问答（用 AVIS 信息层代替逐帧像素，LLM 调用仅需几千 token）。可选 level 参数升级视觉级（l1/l2）。返回中 suggest_layer=true 表示该视频尚未建完整语义层（base全量+CLIP，一次性2-4min，之后任何问题秒答）——若用户表示还会追问该视频其他问题，主动询问是否建层。' +
+      '低成本理解一个视频：输入 B站链接 / BV 号 / 本地视频路径，返回摘要+问答（用 AVIS 信息层代替逐帧像素，LLM 调用仅需几千 token）。可选 level 参数升级视觉级（l1/l2）。返回中 suggest_layer=true 表示该视频尚未建语义层（base 全量转写，一次性 2-4min，之后任何问题秒答）——若用户表示还会追问该视频其他问题，主动询问是否建层。' +
       '用户提到"理解这个视频/视频讲了什么/总结视频"或给出视频链接时使用。' +
       '可选 questions 数组自定义要问的问题（默认 3 问：核心内容/亮点/适合人群）。' +
       '可选 budgetCny 设定单次预算上限（元），超预算自动降级省成本。' +
@@ -184,7 +184,7 @@ export function apply(ctx, config = {}) {
       },
     },
     timeoutMs: TIMEOUT_MS,
-    isConcurrencySafe: () => false, // pipeline is CPU-heavy (ASR/MOG2/YOLO)
+    isConcurrencySafe: () => false, // pipeline is CPU-heavy (ASR/MOG2)
     presentCall: (args) => ({
       card: 'generic',
       title: toolName,

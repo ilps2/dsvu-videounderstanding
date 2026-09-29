@@ -5,7 +5,7 @@
 [![license](https://img.shields.io/github/license/ilps2/dsvu-videounderstanding)](https://github.com/ilps2/dsvu-videounderstanding/blob/main/LICENSE)
 [![language](https://img.shields.io/github/languages/top/ilps2/dsvu-videounderstanding)](https://github.com/ilps2/dsvu-videounderstanding)
 
-低成本视频理解插件：给 dsh agent 注册 `video_understand` 工具——B站链接 / BV 号 / 本地视频 → AVIS 信息层（ASR 转写 + 场景结构 + 运动对象轨迹 + YOLO 语义）→ 摘要+问答。采用 Python 引擎：核心层需 faster-whisper / opencv / yt-dlp（约 200-300MB），可选语义层另需约 2GB 的 torch / transformers / ultralytics，内置 doctor --fix 一键建 venv 并装齐两者。
+低成本视频理解插件：给 dsh agent 注册 `video_understand` 工具——B站链接 / BV 号 / 本地视频 → AVIS 信息层（ASR 转写 + 场景结构 + 运动对象轨迹）→ 摘要+问答。采用 Python 引擎：只需 faster-whisper / opencv / yt-dlp（约 200-300MB），doctor --fix 一键建 venv 并装齐；**不含任何重型可选依赖**（0.7.0 起移除 torch / CLIP / YOLO 语义层与模型权重）。
 
 **dsvu 与 dsh-video-understand 的差异**（v0.6.0，fork 自 0.5.2）：
 - **DeepSeek 视觉模型**：`DEEPSEEK_API_KEY` 配对时，视觉与主模型用 `deepseek-v4-flash-vision-exp`（2026-08-21 上线，单图≤384 token，与 V4-Flash 同价）
@@ -28,7 +28,7 @@ npm install @svenyu/dsvu
 
 **引擎已内含**，无需额外克隆外部仓库。
 
-**零二进制**：仓库与 npm 包内不含任何模型权重。YOLO 语义标签用的 `yolov8n.pt`（约 6 MiB）在**首次真正需要时**才会下载到 `~/.cache/dsvu/models/`，并做 sha256 校验（两个源各自独立校验，见 `engine/model_cache.py`）。离线环境可用 `DSVU_YOLO_MODEL=<本地路径>` 指定已有副本，或 `DSVU_NO_DOWNLOAD=1` 静默降级（只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹主流程）。
+**零二进制、零重型依赖**：仓库与 npm 包内不含任何模型权重，也不含 torch / CLIP / YOLO 语义层（0.7.0 起移除）。安装体积约 300MB（核心层），不再有 GB 级可选依赖。若确实需要 CLIP 语义检索（`avis encode --clip` / `avis search`），自备 `pip install transformers torch` 即可——仓库不再提供安装清单，也不会自动构建。
 
 ### 环境自检
 
@@ -37,7 +37,7 @@ npx dsvu doctor        # 逐项检测 + 给出修复命令
 npx dsvu doctor --fix  # 一键自动修复（建环境 + 装依赖 + 预取模型）
 ```
 
-前置条件仅两个：`ffmpeg`（macOS `brew install ffmpeg` / Ubuntu `sudo apt install ffmpeg`）和一个 LLM API key（见下表）。语义层依赖（torch/CLIP/YOLO，约 2GB）为可选，仅建完整语义层时再装：`pip install -r engine/requirements-layer.txt`。
+前置条件仅两个：`ffmpeg`（macOS `brew install ffmpeg` / Ubuntu `sudo apt install ffmpeg`）和一个 LLM API key（见下表）。除此外没有重型依赖——0.7.0 起已移除 torch / CLIP / YOLO 语义层与模型权重。
 
 ## ⚠️ 数据流披露
 
@@ -113,7 +113,7 @@ dsvu/
 ├── cordis.patch.yml
 ├── dsh/
 │   └── index.js          # host 端：注册 video_understand 工具
-├── engine/               # Python 引擎（核心层 + 可选语义层依赖）
+├── engine/               # Python 引擎（仅核心层，无重型可选依赖）
 │   ├── understand_video.py
 │   ├── avis.py
 │   ├── visual_level.py
@@ -140,7 +140,7 @@ dsvu/
 
 | 层级 | 内容 | 数据流向 | 成本（估算*） |
 |---|---|---|---|
-| L0 信息层 | ASR+场景+轨迹+YOLO → 摘要/问答 | 本地 | 仅 LLM 文本成本 |
+| L0 信息层 | ASR+场景+轨迹 → 摘要/问答 | 本地 | 仅 LLM 文本成本 |
 | L1 视觉级 | 3-5 帧 VLM → 颜色/姿态/衣着 | DeepSeek API | +数帧 VLM 成本 |
 | L2 证据级 | 时间窗密集帧（可 grid 拼图）→ 时间线 | DeepSeek API | 按窗长（grid=单图） |
 
@@ -161,7 +161,7 @@ dsvu/
 
 ## 原理
 
-引擎把视频压缩成**信息层**（ASR 转写 + 场景结构 + 运动对象轨迹 + YOLO 语义，约 1k token）再喂 LLM；同一视频重复理解时信息层缓存复用（内容哈希，二次提问跳过 ASR）。成本与 token 对比的具体测量见 [docs/blog-视频理解性价比实验](docs/blog-视频理解性价比实验-2026-08-20.md)。
+引擎把视频压缩成**信息层**（ASR 转写 + 场景结构 + 运动对象轨迹，约 1k token）再喂 LLM；同一视频重复理解时信息层缓存复用（内容哈希，二次提问跳过 ASR）。成本与 token 对比的具体测量见 [docs/blog-视频理解性价比实验](docs/blog-视频理解性价比实验-2026-08-20.md)。
 
 ## License
 

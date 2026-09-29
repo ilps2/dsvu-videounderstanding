@@ -26,7 +26,7 @@ frame_prep.py — 视频喂 VLM 前的智能帧预处理
   python3 frame_prep.py video.mp4 --windows "12-35,65-120" --block-fps 15
 
   # 稀疏抽帧 (Claude/GPT)
-  python3 frame_prep.py video.mp4 --mode sparse --fps 1 --clip-clusters 20
+  python3 frame_prep.py video.mp4 --mode sparse --fps 1
 
 依赖: ffmpeg (系统), pillow
      CLIP 模式需要: open-clip-torch torch scikit-learn
@@ -213,46 +213,6 @@ def dedup_by_diff(frames, threshold=0.90):
     return kept
 
 
-def dedup_by_clip(frames, n_clusters=20):
-    """CLIP K-means 聚类, 每簇保留质心最近帧。"""
-    try:
-        import torch, open_clip, numpy as np
-    except ImportError:
-        print("  ⚠️ open-clip-torch 未安装, 跳过 CLIP 聚类")
-        return frames
-    if len(frames) <= n_clusters: return frames
-
-    print("  加载 CLIP...")
-    model, _, preprocess = open_clip.create_model_and_transforms(
-        "ViT-B-32", pretrained="laion2b_s34b_b79k")
-    model.eval()
-
-    embeddings = []
-    from PIL import Image
-    for i in range(0, len(frames), 32):
-        batch = frames[i:i+32]
-        images = torch.stack([preprocess(Image.open(f).convert("RGB")) for f in batch])
-        with torch.no_grad():
-            emb = model.encode_image(images)
-            emb = emb / emb.norm(dim=-1, keepdim=True)
-        embeddings.append(emb.cpu().numpy())
-    embeddings = np.concatenate(embeddings, axis=0)
-
-    from sklearn.cluster import KMeans
-    kmeans = KMeans(n_clusters=min(n_clusters, len(frames)), random_state=42, n_init=3)
-    labels = kmeans.fit_predict(embeddings)
-
-    kept_indices = []
-    for c in range(kmeans.n_clusters):
-        mask = labels == c
-        cluster_embs = embeddings[mask]
-        centroid = kmeans.cluster_centers_[c]
-        sims = np.dot(cluster_embs, centroid)
-        kept_indices.append(int(np.where(mask)[0][sims.argmax()]))
-    kept_indices.sort()
-    return [frames[i] for i in kept_indices]
-
-
 def filter_by_windows(frames, windows, fps):
     """保留时间窗口内的帧。"""
     if not windows: return frames
@@ -297,7 +257,6 @@ def main():
     p.add_argument("--sim-threshold", type=float, default=0.90,
                    help="sparse模式相似度阈值")
     p.add_argument("--skip-diff-dedup", action="store_true")
-    p.add_argument("--clip-clusters", type=int, default=0, help="CLIP聚类数, 0=跳过")
     args = p.parse_args()
 
     video = Path(args.video)
@@ -399,12 +358,6 @@ def main():
         before = len(frames)
         frames = filter_by_windows(frames, windows, args.fps)
         print(f"\n[L2.5] 时间窗对齐: {before} → {len(frames)}")
-
-    if args.clip_clusters > 0:
-        print(f"\n[L3] CLIP 聚类 ({args.clip_clusters} 簇)...")
-        before = len(frames)
-        frames = dedup_by_clip(frames, n_clusters=args.clip_clusters)
-        print(f"  → {before} → {len(frames)}")
 
     # Save
     final_dir = out_dir / "final"

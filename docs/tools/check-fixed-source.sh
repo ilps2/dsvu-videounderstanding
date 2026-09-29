@@ -44,10 +44,10 @@ else
 fi
 
 echo
-echo "=== 3. 模型权重（0.6.9 起不随仓库/包分发）==="
+echo "=== 3. 模型权重（0.7.0 起不随仓库/包分发）==="
 weights="$(git ls-files | grep -Ei '\.(pt|pth|onnx|safetensors|gguf|h5)$' || true)"
 if [ -n "$weights" ]; then
-  echo "❌ 仓库内出现模型权重（应改为按需下载，见 engine/model_cache.py）："
+  echo "❌ 仓库内出现模型权重（0.7.0 起已移除权重分发；如需模型请走本地自备，不要入库）："
   echo "$weights" | sed 's/^/   /'
   fail=1
 else
@@ -56,7 +56,21 @@ fi
 
 if [ "${1:-}" = "--audit" ]; then
   echo
-  echo "=== 4. 完整权限信号审计 ==="
+  echo "=== 4. 打包卫生：__pycache__ / .pyc 不得存在（会被打进 npm 包）==="
+  # 成因：package.json 的 files 白名单会盖过 .npmignore，所以 engine/ 下的
+  # __pycache__ 照样入包（2026-09-30 实测：5 个 .pyc 让 tarball 从 188KB 涨到 267KB）。
+  # 现已把 files 改成 engine/**/*.py + engine/**/*.txt，从根上挡住；这里再兜一道。
+  pycache="$(find . -name '__pycache__' -not -path './.git/*' -type d 2>/dev/null)"
+  if [ -n "$pycache" ]; then
+    echo "❌ 工作区存在 __pycache__（发布前先删，或确认 files 白名单不含它）："
+    echo "$pycache" | sed 's/^/   /'
+    fail=1
+  else
+    echo "✅ 通过"
+  fi
+
+  echo
+  echo "=== 5. 完整权限信号审计 ==="
   if command -v node >/dev/null 2>&1; then
     node docs/tools/dsh-store-source-audit.mjs --repo . || fail=1
   else

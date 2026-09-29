@@ -155,11 +155,15 @@ package.json `dsh.compatibility`：
   `git ls-files -s | awk '$1=="100755"'`（应为空；必要时 `chmod 644 bin/doctor.mjs`）
 - 历史实验脚本 `experiments/` 移入 `docs/experiments/`：非运行时源码，也从未进入
   npm 包（`package.json.files` 不含该目录）
-- 收敛后有界运行时源码：**29 文件 / 389304 字节**（上游上限 240 文件、单文件 256 KiB、
+- 收敛后有界运行时源码：**29 文件 / 386329 字节**（上游上限 240 文件、单文件 256 KiB、
   合计 2 MiB），修复前为 37 文件 / 423420 字节
-- 0.6.9 起仓库与 npm 包**不含任何模型权重**：`yolov8n.pt`（6.2 MiB）从 git 移除，改为
-  首次需要时下载到 `~/.cache/dsvu/models/` 并做 sha256 校验（`engine/model_cache.py`，
-  每个源独立固定 size+hash）。npm tarball 由 6.1 MiB 降至约 188 KiB
+- 0.7.0 起仓库与 npm 包**不含任何模型权重，也不含重型可选依赖**：`yolov8n.pt`（6.2 MiB）、
+  `engine/model_cache.py` 与 `engine/requirements-layer.txt` 均已移除，语义层只建 base 全量转写。
+  安装体积由 ~2.3GB 降到 ~300MB；npm tarball 演进：6.1 MiB → 188 KiB → **118.8 KiB / 30 files**
+- ⚠️ 打包卫生（与上面同源的 `files` 白名单语义）：`files` 会盖过 `.npmignore`，所以
+  `engine/__pycache__/` 里的 `.pyc` 照样入包——实测 5 个 .pyc 让 tarball 从 188KB 涨到 267KB。
+  现已把 `files` 改为 `engine/**/*.py` + `engine/**/*.txt` 从根上挡住，并在
+  `docs/tools/check-fixed-source.sh` 里加了兜底检查
 - 仍存在的信号：`files` / `commands` / `credentials` —— 读 API key（`credentials`）与
   spawn Python 引擎（`commands`）是本插件的功能本身，无法在不移除功能的前提下消除；
   上游自动通道要求六个信号全为 false，故本插件按定位应走守卫生效的 `user-reviewed`
@@ -168,13 +172,11 @@ package.json `dsh.compatibility`：
 ## E. 运行时依赖与失败边界（摘要）
 
 - 引擎为 Python 源码（`engine/`），首次调用 `video_understand` 时创建插件本地 venv
-  并安装核心依赖（faster-whisper / opencv / yt-dlp / pandas，约 200-300MB）；
-  可选语义层（torch / ultralytics，约 2GB）需显式 `dsvu doctor --fix --layer`。
-  仓库内无预编译二进制、无可执行位文件，**不含模型权重**。
-- 模型：`yolov8n.pt` 首次需要 YOLO 语义标签时按需下载（约 6 MiB）到
-  `~/.cache/dsvu/models/`，逐源 sha256 校验，先写 `.part` 再原子替换；缓存文件被篡改
-  会被识别并改名为 `.bad` 后重下。离线可用 `DSVU_YOLO_MODEL=<路径>` 指定本地副本，
-  或 `DSVU_NO_DOWNLOAD=1` 静默降级（只丢 YOLO 语义标签，不影响 ASR / 场景 / 轨迹）。
+  并安装核心依赖（faster-whisper / opencv / yt-dlp / pandas，约 200-300MB）。
+  **0.7.0 起不再含任何重型可选依赖**：torch / CLIP / YOLO 语义层与模型权重已移除，
+  仓库内无预编译二进制、无可执行位文件、无模型权重。
+- CLIP 语义检索（`avis encode --clip` / `avis search`）的代码保留但需自备
+  `transformers + torch`；未装时明确跳过并说明原因，不再自动构建或下载。
 - 凭据：只读 `DEEPSEEK_API_KEY`（及 `DSVU_*` 可选项）与 `~/.dsh/.credentials.yaml`，
   进程内使用，不落盘、不上传至 DeepSeek API 以外的端点。
 - 网络：B站视频下载（yt-dlp）与 DeepSeek API；L0 层级完全本地。
