@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.8 (2026-09-30)
+- chore(dsh-store): **对齐 DSH STORE 固定源自动策略**
+  - `engine/avis.py` 去掉误设的可执行位（git mode `100755` → `100644`）——该模式会命中上游 `nativeOrExecutableArtifacts` 权限信号，而仓库内并无任何预编译二进制
+  - 历史实验脚本 `experiments/` 移入 `docs/experiments/`：它们是 2026-08-20 的一次性对照实验，不属于运行时，也从未进过 npm 包（`package.json.files` 不含该目录）；移入 `docs/` 后与上游把 `examples/`、`benchmarks/` 划为非运行时源码的口径一致
+  - 有界运行时源码由 37 文件 / 423420 字节收敛为 **29 文件 / 386877 字节**（上限 240 文件 / 2 MiB）
+- fix(compat): **兼容矩阵更新到当前发布窗口**——`dsh` 范围由 `>=0.1.0-rc.8 <0.2.0` 放宽为 `>=0.1.0-rc.8 <0.3.0`，并新增 `0.2.0-rc.2: compatible`（已在该版本完成一次性 Profile 的安装 / 启动 / 卸载 / 自检验收，证据见 `docs/dsh-compat-evidence.md`）
+  - 此前只声明 `0.1.5-rc.1`，落在上游「最近三个 dsh 版本里至少一个 `compatible`」要求之外，即使权限面放行也会被自动转 `unlisted`
+- chore(version): package.json 版本号递进为 0.6.8——此前仓库停留在 0.6.6，而 npm 上已发布 0.6.7；两者代码内容逐字节一致（已比对 npm tarball），只是版本号那一步没提交到主干
+- docs: 权限披露补充 `network` 一项；README「DSH 兼容性与权限」与 `docs/dsh-compat-evidence.md` 同步更新
+
 ## 0.6.7 (2026-08-23)
 - feat: **视觉证据缓存**——同一视频同一窗口的 L2 扫描结果跨进程复用（`~/.cache/dsvu/visual_evidence/`），第二次起视觉成本 0、不再重复抽帧调 VLM。实测：牛来.mp4 第二问 29s→3s，两问合计 0.032→0.011 元
 

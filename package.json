@@ -1,6 +1,6 @@
 {
   "name": "@svenyu/dsvu",
-  "version": "0.6.6",
+  "version": "0.6.8",
   "description": "dsvu（DeepSeek-Powered Video Understanding）低成本视频理解工具：B站链接/BV/本地视频 → 信息层（ASR+场景+对象轨迹+YOLO）→ 摘要+问答。基于 deepseek-v4-flash-vision-exp 同源即看即答 + grid 密集抽帧。问题驱动动态路由分层（L0/L1/L2）、语义层复用、预算上限。采用 Python 引擎：核心层需 faster-whisper / opencv / yt-dlp（约 200-300MB），可选语义层另需约 2GB 的 torch / transformers / ultralytics，内置 doctor --fix 一键建 venv 并装齐两者。",
   "publishConfig": {
     "access": "public"
@@ -15,16 +15,18 @@
       "patch": "./cordis.patch.yml"
     },
     "compatibility": {
-      "dsh": ">=0.1.0-rc.8 <0.2.0",
+      "dsh": ">=0.1.0-rc.8 <0.3.0",
       "dshReleases": {
-        "0.1.5-rc.1": "compatible"
+        "0.1.5-rc.1": "compatible",
+        "0.2.0-rc.2": "compatible"
       }
     },
     "permissions": {
       "files": "读写本地视频文件、插件本地 .venv 与 ~/.cache/dsvu 缓存；不触碰 Profile 配置外的其他用户目录",
+      "network": "B站视频下载（yt-dlp）与 DeepSeek API 视听分析请求；均由用户显式触发，不向其他端点发送数据",
       "commands": "安装后按需 spawn 子进程：python3（引擎）、ffmpeg（抽帧/转码）、yt-dlp（B站下载）、pip/uv（建 venv 装依赖）",
       "credentials": "从环境变量读取 DEEPSEEK_API_KEY（及 DSVU_* 可选项）；仅在进程内使用，不落盘、不上传到 DeepSeek API 以外的端点",
-      "nativeOrExecutableArtifacts": "内含 Python 引擎源码（engine/）；首次调用时创建插件本地 Python venv 并安装 faster-whisper/opencv/yt-dlp（核心层约 200-300MB，可选语义层另约 2GB）；无预编译二进制"
+      "nativeOrExecutableArtifacts": "内含 Python 引擎源码（engine/）；首次调用时创建插件本地 Python venv 并安装 faster-whisper/opencv/yt-dlp（核心层约 200-300MB，可选语义层另约 2GB）；仓库内无预编译二进制、无可执行位文件"
     }
   },
   "bin": {
